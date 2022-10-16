@@ -5,9 +5,11 @@ const config = require("./config.json");
 const Events = require("./models/Events");
 const EventSerializer = require("./events/EventSerializer");
 
+const handleTokenEventStream = require('./lib/handleTokenEventStream')
 
 const main = async () => {
-    console.log('hello')
+  const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
+  handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS)
 };
 
-module.exports = main;
+main()
