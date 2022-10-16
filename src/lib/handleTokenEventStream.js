@@ -12,15 +12,16 @@ const localStorage = new LocalStorage(
 );
 
 const handleTokenEventStream =
-  (provider) => async (storagePrefix, contractAddress) => {
+  (provider) => async (storagePrefix, contractAddress, stBlock) => {
     const targetContract = new ethers.Contract(
       contractAddress,
       ReflexerTokenABI,
       provider
     );
 
-    await FetchEvents(provider)(storagePrefix, targetContract.address);
+    await FetchEvents(provider)(storagePrefix, targetContract.address, stBlock);
 
+    // TODO need to handle this somehow
     //setInterval(async () => {
     //  await FetchEvents(provider)(storagePrefix, targetContract.address);
     //}, 60 * 2 * 1000);
@@ -29,7 +30,7 @@ const handleTokenEventStream =
       TokenEventFilterCreator(provider)(targetContract.address),
       async (event) => {
         const happenedAt = await GetBlockTimestamp(provider)(event.blockNumber);
-        console.log(event)
+        console.log(event);
         SingleEventSaver(happenedAt)(event)
           .then((r) => console.log("event saved"))
           .catch((err) => console.log(err));

@@ -2,32 +2,32 @@ const ethers = require("ethers");
 const ReflexerTokenABI = require("../contracts/ReflexerToken");
 
 const TokenEventFilterCreator = (provider) => (contractAddress) => {
-  console.log(contractAddress);
   const ReflexerTokenContract = new ethers.Contract(
     contractAddress,
     ReflexerTokenABI,
     provider
   );
 
-  const priceInAssetUpdated = ReflexerTokenContract.filters.DelegateChanged(
+  const delegateChange = ReflexerTokenContract.filters.DelegateChanged(
     null,
     null,
     null
   );
-  const priceBoundSet = ReflexerTokenContract.filters.DelegateVotesChanged(
-    null,
-    null,
-    null
-  );
-  const priceFlag = ReflexerTokenContract.filters.Transfer(null, null, null);
+  const delegateVotesChange =
+    ReflexerTokenContract.filters.DelegateVotesChanged(null, null, null);
+  const transfer = ReflexerTokenContract.filters.Transfer(null, null, null);
+  const mint = ReflexerTokenContract.filters.Mint(null, null);
+  const burn = ReflexerTokenContract.filters.Burn(null, null);
 
   const fils = {
     address: contractAddress,
     topics: [
       [
-        ...priceInAssetUpdated.topics,
-        ...priceBoundSet.topics,
-        ...priceFlag.topics,
+        ...delegateChange.topics,
+        ...delegateVotesChange.topics,
+        ...transfer.topics,
+        ...mint.topics,
+        ...burn.topics,
       ],
     ],
   };
