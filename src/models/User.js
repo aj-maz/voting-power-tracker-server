@@ -4,30 +4,34 @@ const { ethers } = require("ethers");
 const UserSchema = new mongoose.Schema(
   {
     address: {
-      type: string,
+      type: String,
       required: true,
       unique: true,
     },
     currentBalance: {
-      type: string,
+      type: String,
       required: true,
       default: "0",
     },
     currentVotingPower: {
-      type: string,
+      type: String,
       required: true,
       default: "0",
+    },
+    currVoteMath: {
+      type: Number,
+      default: 0,
     },
     delegationHistory: [
       {
         timestamp: Date,
-        amount: string,
+        amount: String,
       },
     ],
     balanceHistory: [
       {
         timestamp: Date,
-        amount: string,
+        amount: String,
       },
     ],
   },
@@ -67,6 +71,7 @@ const methods = {
       });
     },
     transferUser: (address, amount, to) => {
+      //console.log("Transfer user ", address, " ", amount, " ", to);
       return new Promise((resolve, reject) => {
         methods.queries
           .getUserByAddress(address)
@@ -74,16 +79,17 @@ const methods = {
             const newBalance = to
               ? ethers.BigNumber.from(user.currentBalance).add(amount)
               : ethers.BigNumber.from(user.currentBalance).sub(amount);
-            Users.updateOne(
+
+            return Users.updateOne(
               { address },
               {
                 $set: {
-                  currentBalance: newBalance,
+                  currentBalance: String(newBalance),
                 },
                 $push: {
                   balanceHistory: {
                     timestamp: new Date(),
-                    amount: newBalance,
+                    amount: String(newBalance),
                   },
                 },
               }
@@ -116,6 +122,40 @@ const methods = {
                   delegationHistory: {
                     timestamp: new Date(),
                     amount: newVotingPower,
+                  },
+                },
+              }
+            );
+          })
+          .then((r) => {
+            return resolve("done");
+          })
+          .catch((err) => {
+            return reject(err);
+          });
+      });
+    },
+
+    setDelegate: (address, amount) => {
+      return new Promise((resolve, reject) => {
+        methods.queries
+          .getUserByAddress(address)
+          .then((user) => {
+            console.log({
+              timestamp: new Date(),
+              amount: String(amount),
+            });
+            return Users.updateOne(
+              { address },
+              {
+                $set: {
+                  currentVotingPower: String(amount),
+                  currVoteMath: ethers.BigNumber.from(amount).div(10 ** 10),
+                },
+                $push: {
+                  delegationHistory: {
+                    timestamp: new Date(),
+                    amount: String(amount),
                   },
                 },
               }

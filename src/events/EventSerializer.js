@@ -18,6 +18,7 @@ const EventSerializer = (address, startingBlock = 0) => {
       }
     )
       .sort({ blockNumber: 1, logIndex: 1 })
+      .limit(500)
       .select({
         blockNumber: 1,
         _id: 1,
@@ -27,9 +28,10 @@ const EventSerializer = (address, startingBlock = 0) => {
       })
       .exec((err, tes) => {
         if (err) return reject(err);
-        return resolve(
-          tes.map((te) => ({ ...te._doc, ...iface.parseLog(te) }))
-        );
+
+        const tesMap = tes.map((te) => ({ ...te._doc, ...iface.parseLog(te) }));
+
+        return resolve(tesMap);
       });
   });
 };

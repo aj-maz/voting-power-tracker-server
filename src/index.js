@@ -13,9 +13,6 @@ const JobQueue = require("./lib/JobQueue");
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
   handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
-  handleTokenEventStream(provider)("token+1", config.TOKEN_ADDRESS, 15014364);
-  handleTokenEventStream(provider)("token+2", config.TOKEN_ADDRESS, 13014364);
-  handleTokenEventStream(provider)("token+3", config.TOKEN_ADDRESS, 14014364);
 
   const votingPowerJobQueue = JobQueue();
 
@@ -26,20 +23,22 @@ const main = async () => {
     isAddingToQueue = true;
     const notProcessedEvents = await EventSerializer(
       config.TOKEN_ADDRESS,
-      15257613
+      config.STARTING_BLOCK //15257613
     );
     notProcessedEvents.forEach((ev, i) => {
       //  console.log(ev)
-      console.log(i);
+      if (i % 1000 == 0) {
+        console.log(i);
+      }
       votingPowerJobQueue.addJob(ev);
     });
     isAddingToQueue = false;
   };
 
   addToQueue();
-  setInterval(async () => {
-    addToQueue();
-  }, 20 * 30 * 1000);
+   setInterval(async () => {
+     addToQueue();
+   }, 1000 * 30);
 
   const setEventProcessed = (_id) => {
     return new Promise((resolve, reject) => {
@@ -53,13 +52,15 @@ const main = async () => {
   setInterval(() => {
     votingPowerJobQueue.execute(async (currentJob) => {
       try {
-        await EventProcessor("wbtc", null)(currentJob);
+        await EventProcessor("", null)(currentJob);
+        await setEventProcessed(currentJob._id);
       } catch (err) {
         console.log(err);
       }
+
       //await setEventProcessed(currentJob._id);
     });
-  }, 10);
+  }, 5);
 };
 
 main();
