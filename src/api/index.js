@@ -18,17 +18,24 @@ const apiServer = async () => {
   
     type Query {
         admins: [Admin!]!
+        me: Admin
     }
 
     type Mutation {
         getNonce(address: String!): Int
         getToken(address: String!, signature: String!): String!
+        addAdmin(address: String!): String!
+        deleteAdmin(targetAddress: String!): String!
+        changeSuperAdmin(targetAddress: String!): String!
     }
   `;
 
   const resolvers = {
     Query: {
       admins: Admin.methods.queries.getAll,
+      me: (_, {}, { address }) => {
+        return Admin.methods.queries.getAdminByAddress(address);
+      },
     },
 
     Mutation: {
@@ -76,6 +83,39 @@ const apiServer = async () => {
             throw new Error(err);
           });
       },
+
+      addAdmin: (_, { address }, { superAdmin }) => {
+        if (!superAdmin) {
+          throw new Error("Only super admin can");
+        }
+        return Admin.methods.commands
+          .create(address, false)
+          .then((a) => "Admin Created.")
+          .catch((err) => err);
+      },
+
+      deleteAdmin: (_, { targetAddress }, { superAdmin, address }) => {
+        if (!superAdmin) {
+          throw new Error("Only super admin can");
+        }
+        if (targetAddress.toLowerCase() === address.toLowerCase()) {
+          throw new Error("Can not delete super admin.");
+        }
+        return Admin.methods.commands
+          .delete(targetAddress)
+          .then((a) => "Admin deleted.")
+          .catch((err) => err);
+      },
+
+      changeSuperAdmin: (_, { targetAddress }, { superAdmin, address }) => {
+        if (!superAdmin) {
+          throw new Error("Only super admin can");
+        }
+        return Admin.methods.commands
+          .transferSuperPower(address, targetAddress)
+          .then((a) => "Super Admin Changed.")
+          .catch((err) => err);
+      },
     },
   };
 
@@ -97,7 +137,7 @@ const apiServer = async () => {
 
       const userId = decode._id;
 
-      return { userId };
+      return { ...decode };
     },
   });
 

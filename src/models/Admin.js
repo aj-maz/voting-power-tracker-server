@@ -6,6 +6,7 @@ const AdminSchema = new mongoose.Schema(
       type: String,
       required: true,
       lowercase: true,
+      unique: true,
     },
     superAdmin: {
       type: Boolean,
@@ -63,9 +64,9 @@ const methods = {
       return admin.save();
     },
 
-    delete: (_id) => {
+    delete: (address) => {
       return new Promise((resolve, reject) => {
-        Admin.remove({ _id }, (err, done) => {
+        Admin.remove({ address }, (err, done) => {
           if (err) return reject(err);
           return resolve("done");
         });
@@ -75,21 +76,36 @@ const methods = {
     transferSuperPower: (currentSuper, nextSuper) => {
       // only super admin can do this
       return new Promise((resolve, reject) => {
-        Admin.updateOne(
-          { address: currentSuper },
-          { $set: { superAdmin: false } },
-          (err, done) => {
-            if (err) return reject(err);
+        methods.queries.getAdminByAddress(nextSuper).then((admin) => {
+          if (admin) {
             Admin.updateOne(
-              { address: nextSuper },
-              { $set: { superAdmin: true } },
+              { address: currentSuper },
+              { $set: { superAdmin: false } },
               (err, done) => {
                 if (err) return reject(err);
-                return resolve(true);
+                Admin.updateOne(
+                  { address: nextSuper },
+                  { $set: { superAdmin: true } },
+                  (err, done) => {
+                    if (err) return reject(err);
+                    return resolve(true);
+                  }
+                );
               }
             );
+          } else {
+            methods.commands.create(nextSuper, true).then((r) => {
+              Admin.updateOne(
+                { address: currentSuper },
+                { $set: { superAdmin: false } },
+                (err, done) => {
+                  if (err) return reject(err);
+                  return resolve(true);
+                }
+              );
+            });
           }
-        );
+        });
       });
     },
 
