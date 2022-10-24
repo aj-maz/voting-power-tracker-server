@@ -10,6 +10,8 @@ const EventProcessor = require("./events/EventProcessor");
 const handleTokenEventStream = require("./lib/handleTokenEventStream");
 const JobQueue = require("./lib/JobQueue");
 
+const apiServer = require('./api')
+
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
   handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
@@ -18,7 +20,7 @@ const main = async () => {
 
   let isAddingToQueue = false;
 
-  const addToQueue = async () => {
+  /*const addToQueue = async () => {
     if (isAddingToQueue) return;
     isAddingToQueue = true;
     const notProcessedEvents = await EventSerializer(
@@ -60,7 +62,9 @@ const main = async () => {
 
       //await setEventProcessed(currentJob._id);
     });
-  }, 5);
+  }, 5);*/
+
+  apiServer()
 };
 
 main();
