@@ -5,10 +5,14 @@ const AdminSchema = new mongoose.Schema(
     address: {
       type: String,
       required: true,
+      lowercase: true,
     },
     superAdmin: {
       type: Boolean,
       default: false,
+    },
+    nonce: {
+      type: Number,
     },
   },
   {
@@ -16,11 +20,11 @@ const AdminSchema = new mongoose.Schema(
   }
 );
 
-export const Admin = mongoose.model("admin", AdminSchema);
+const Admin = mongoose.model("admin", AdminSchema);
 
 const methods = {
   queries: {
-    getUserAddress: (address) => {
+    getAdminByAddress: (address) => {
       return new Promise((resolve, reject) => {
         Admin.findOne({ address }, (err, admin) => {
           if (err) return reject(err);
@@ -40,7 +44,7 @@ const methods = {
 
     getAll: () => {
       return new Promise((resolve, reject) => {
-        Admin.find({ _id }, (err, admins) => {
+        Admin.find({}, (err, admins) => {
           if (err) return reject(err);
           return resolve(admins);
         });
@@ -50,7 +54,11 @@ const methods = {
   commands: {
     create: (address, superAdmin) => {
       // only super admin can do this
-      const admin = new Admin({ address, superAdmin });
+      const admin = new Admin({
+        address,
+        superAdmin,
+        nonce: Math.floor(Math.random() * 1000000),
+      });
 
       return admin.save();
     },
@@ -80,6 +88,19 @@ const methods = {
                 return resolve(true);
               }
             );
+          }
+        );
+      });
+    },
+
+    setNewNonce: (address) => {
+      return new Promise((resolve, reject) => {
+        Admin.updateOne(
+          { address: address },
+          { $set: { nonce: Math.floor(Math.random() * 1000000) } },
+          (err, done) => {
+            if (err) return reject(err);
+            return resolve(done);
           }
         );
       });
