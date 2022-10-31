@@ -1,10 +1,17 @@
 const ethers = require("ethers");
+const path = require("path");
+
 const ReflexerTokenABI = require("../contracts/ReflexerToken");
+const LocalStorage = require("node-localstorage").LocalStorage;
 
 const TokenEventFilterCreator = require("./TokenEventFilterCreator");
 
+const localStorage = new LocalStorage(
+  path.resolve(__dirname, "..", "..", "data")
+);
+
 const MineTokenEvents =
-  (provider) =>
+  (provider, paused) =>
   async (contractAddress, startingBlock, endingBlock, contractSkip, cb) => {
     const ReflexerTokenContract = new ethers.Contract(
       contractAddress,
@@ -18,6 +25,15 @@ const MineTokenEvents =
           setTimeout(() => resolve(), timeout);
         });
 
+      if (parseInt(localStorage.getItem("fetchingStatus")) == 0) {
+        return;
+      }
+
+      if (parseInt(localStorage.getItem("fetchingStatus")) == 2) {
+        await sleep(4000);
+        return queryBatch(from, to, skip, attempt);
+      }
+
       if (skip === 0) {
         console.log("already fetched all blocks");
         return;
@@ -26,7 +42,7 @@ const MineTokenEvents =
       try {
         console.log(`fetching from block ${from} to ${from + skip - 1} ...`);
         const fileteredEvents = await ReflexerTokenContract.queryFilter(
-            TokenEventFilterCreator(provider)(contractAddress),
+          TokenEventFilterCreator(provider)(contractAddress),
           from,
           from + skip - 1
         );
@@ -40,11 +56,11 @@ const MineTokenEvents =
             ? to
             : await provider.getBlockNumber();
         if (nextFrom > lastBlock) {
-          queryBatch(lastBlock, to, 0);
+          return queryBatch(lastBlock, to, 0);
         } else if (nextTo > lastBlock) {
-          queryBatch(nextFrom, to, lastBlock - nextFrom);
+          return queryBatch(nextFrom, to, lastBlock - nextFrom);
         } else {
-          queryBatch(nextFrom, to, skip);
+          return queryBatch(nextFrom, to, skip);
         }
       } catch (err) {
         const waitTime = 1000 * attempt;
@@ -54,7 +70,7 @@ const MineTokenEvents =
       }
     };
 
-    queryBatch(startingBlock, endingBlock, contractSkip);
+    return queryBatch(startingBlock, endingBlock, contractSkip);
   };
 
 module.exports = MineTokenEvents;

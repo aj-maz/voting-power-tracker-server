@@ -16,7 +16,7 @@ const apiServer = require("./api");
 
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
-  handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
+  //handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
 
   const votingPowerJobQueue = JobQueue();
 
@@ -81,4 +81,4 @@ const main = async () => {
   apiServer();
 };
 
-main()
+main();

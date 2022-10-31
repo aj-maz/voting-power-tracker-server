@@ -11,18 +11,16 @@ const localStorage = new LocalStorage(
 );
 
 const fetchEvents =
-  (provider) => async (storagePrefix, contractAddress, stBlock) => {
+  (provider, paused) => async (storagePrefix, contractAddress, stBlock) => {
     try {
-      console.log("here");
       const lastBlock = await provider.getBlock();
-      console.log("but not here");
 
       const startingBlock = stBlock
         ? stBlock
-        : localStorage.getItem(`${storagePrefix}LastFetched`)
-        ? parseInt(localStorage.getItem(`${storagePrefix}LastFetched`))
-        : config.STARTING_BLOCK;
-      return EventMiner(provider)(
+        : localStorage.getItem(`lastFetchedBlock`)
+        ? parseInt(localStorage.getItem(`lastFetchedBlock`))
+        : parseInt(localStorage.getItem(`tokenCreationBlock`));
+      return EventMiner(provider, paused)(
         contractAddress,
         startingBlock,
         lastBlock.number,
@@ -39,7 +37,7 @@ const fetchEvents =
               .then((r) => console.log("event saved"))
               .catch((err) => console.log(err));
           });
-          localStorage.setItem(`${storagePrefix}LastFetched`, lastFetchedBlock);
+          localStorage.setItem(`lastFetchedBlock`, lastFetchedBlock);
         }
       );
     } catch (err) {

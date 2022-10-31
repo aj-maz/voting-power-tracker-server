@@ -2,6 +2,7 @@ const { ApolloServer } = require("@apollo/server");
 const { startStandaloneServer } = require("@apollo/server/standalone");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
+const Fetcher = require("../models/Fetcher");
 
 const config = require("../config.json");
 
@@ -15,10 +16,18 @@ const apiServer = async () => {
         superAdmin: Boolean
         nonce: Int
     }
+
+    type FetchingData {
+      status: Int!
+      tokenAddress: String
+      tokenCreationBlock: String
+      lastFetchedBlock: String
+    }
   
     type Query {
         admins: [Admin!]!
         me: Admin
+        fetcher: FetchingData!
     }
 
     type Mutation {
@@ -27,6 +36,12 @@ const apiServer = async () => {
         addAdmin(address: String!): String!
         deleteAdmin(targetAddress: String!): String!
         changeSuperAdmin(targetAddress: String!): String!
+        
+        # Fetcher Methods
+        startFetching(tokenAddress: String!, tokenCreationBlock: String!): String!
+        pauseFetching: String!
+        resumeFetching: String!
+        resetFetching: String!
     }
   `;
 
@@ -35,6 +50,9 @@ const apiServer = async () => {
       admins: Admin.methods.queries.getAll,
       me: (_, {}, { address }) => {
         return Admin.methods.queries.getAdminByAddress(address);
+      },
+      fetcher: () => {
+        return Fetcher.get();
       },
     },
 
@@ -115,6 +133,19 @@ const apiServer = async () => {
           .transferSuperPower(address, targetAddress)
           .then((a) => "Super Admin Changed.")
           .catch((err) => err);
+      },
+
+      startFetching: (_, { tokenAddress, tokenCreationBlock }) => {
+        return Fetcher.start({tokenAddress, tokenCreationBlock});
+      },
+      pauseFetching: () => {
+        return Fetcher.pause();
+      },
+      resumeFetching: () => {
+        return Fetcher.resume();
+      },
+      resetFetching: () => {
+        return Fetcher.reset();
       },
     },
   };

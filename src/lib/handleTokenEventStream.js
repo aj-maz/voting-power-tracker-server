@@ -11,20 +11,39 @@ const localStorage = new LocalStorage(
   path.resolve(__dirname, "..", "..", "data")
 );
 
+
 const handleTokenEventStream =
-  (provider) => async (storagePrefix, contractAddress, stBlock) => {
+  (provider, paused, currentRunners) => async (storagePrefix, contractAddress, stBlock) => {
     const targetContract = new ethers.Contract(
       contractAddress,
       ReflexerTokenABI,
       provider
     );
 
-    await FetchEvents(provider)(storagePrefix, targetContract.address, stBlock);
+    if (currentRunners[0] == false) {
+      currentRunners[0] = true;
+      await FetchEvents(provider, paused)(
+        storagePrefix,
+        targetContract.address,
+        stBlock
+      );
+      currentRunners[0] = false;
+    }
 
     // TODO need to handle this somehow
-    //setInterval(async () => {
-    //  await FetchEvents(provider)(storagePrefix, targetContract.address);
-    //}, 60 * 2 * 1000);
+    setInterval(async () => {
+      console.log("Current Runners: ", currentRunners);
+
+      if (currentRunners[0] == false) {
+        currentRunners[0] = true;
+        await FetchEvents(provider, paused)(
+          storagePrefix,
+          targetContract.address,
+          stBlock
+        );
+        currentRunners[0] = false;
+      }
+    }, 60 * 2 * 1000);
 
     targetContract.on(
       TokenEventFilterCreator(provider)(targetContract.address),
@@ -34,7 +53,7 @@ const handleTokenEventStream =
         SingleEventSaver(happenedAt)(event)
           .then((r) => console.log("event saved"))
           .catch((err) => console.log(err));
-        localStorage.setItem(`${storagePrefix}LastFetched`, event.blockNumber);
+        localStorage.setItem(`lastFetchedBlock`, event.blockNumber);
       }
     );
   };
