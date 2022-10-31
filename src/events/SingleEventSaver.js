@@ -1,4 +1,4 @@
-const EventModel = require("../models/Events");
+const { EventModel } = require("../models/Events");
 
 const SingleEventSaver = (happenedAt) => (ev) => {
   const eventString = JSON.stringify(ev);

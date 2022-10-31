@@ -11,9 +11,11 @@ const localStorage = new LocalStorage(
   path.resolve(__dirname, "..", "..", "data")
 );
 
+let alreadySubbing = false;
 
 const handleTokenEventStream =
-  (provider, paused, currentRunners) => async (storagePrefix, contractAddress, stBlock) => {
+  (provider, paused, currentRunners) =>
+  async (storagePrefix, contractAddress, stBlock) => {
     const targetContract = new ethers.Contract(
       contractAddress,
       ReflexerTokenABI,
@@ -42,20 +44,24 @@ const handleTokenEventStream =
           stBlock
         );
         currentRunners[0] = false;
+        if (!alreadySubbing) {
+          targetContract.on(
+            TokenEventFilterCreator(provider)(targetContract.address),
+            async (event) => {
+              const happenedAt = await GetBlockTimestamp(provider)(
+                event.blockNumber
+              );
+              console.log(event);
+              SingleEventSaver(happenedAt)(event)
+                .then((r) => console.log("event saved"))
+                .catch((err) => console.log(err));
+              localStorage.setItem(`lastFetchedBlock`, event.blockNumber);
+            }
+          );
+          alreadySubbing = true;
+        }
       }
     }, 60 * 2 * 1000);
-
-    targetContract.on(
-      TokenEventFilterCreator(provider)(targetContract.address),
-      async (event) => {
-        const happenedAt = await GetBlockTimestamp(provider)(event.blockNumber);
-        console.log(event);
-        SingleEventSaver(happenedAt)(event)
-          .then((r) => console.log("event saved"))
-          .catch((err) => console.log(err));
-        localStorage.setItem(`lastFetchedBlock`, event.blockNumber);
-      }
-    );
   };
 
 module.exports = handleTokenEventStream;

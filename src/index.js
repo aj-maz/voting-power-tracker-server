@@ -2,7 +2,6 @@ require("./mongooseConnector");
 const { ethers } = require("ethers");
 const config = require("./config.json");
 
-const Events = require("./models/Events");
 const EventSerializer = require("./events/EventSerializer");
 
 const EventProcessor = require("./events/EventProcessor");

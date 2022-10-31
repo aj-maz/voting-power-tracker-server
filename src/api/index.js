@@ -3,6 +3,7 @@ const { startStandaloneServer } = require("@apollo/server/standalone");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const Fetcher = require("../models/Fetcher");
+const { query } = require("../models/Events");
 
 const config = require("../config.json");
 
@@ -23,11 +24,24 @@ const apiServer = async () => {
       tokenCreationBlock: String
       lastFetchedBlock: String
     }
+
+    type Events {
+      items: [Event!]!
+      count: Int!
+    }
+
+    type Event {
+      name: String!
+      blockNumber: Int!
+      transactionHash: String!
+      processed: Boolean!
+    }
   
     type Query {
         admins: [Admin!]!
         me: Admin
         fetcher: FetchingData!
+        events(limit: Int!, offset: Int!): Events!
     }
 
     type Mutation {
@@ -53,6 +67,9 @@ const apiServer = async () => {
       },
       fetcher: () => {
         return Fetcher.get();
+      },
+      events: (_, { limit, offset }) => {
+        return query({ limit, offset });
       },
     },
 
@@ -136,7 +153,7 @@ const apiServer = async () => {
       },
 
       startFetching: (_, { tokenAddress, tokenCreationBlock }) => {
-        return Fetcher.start({tokenAddress, tokenCreationBlock});
+        return Fetcher.start({ tokenAddress, tokenCreationBlock });
       },
       pauseFetching: () => {
         return Fetcher.pause();

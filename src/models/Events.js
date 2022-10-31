@@ -1,4 +1,6 @@
+const { ethers } = require("ethers");
 const mongoose = require("mongoose");
+const ReflexerTokenABI = require("../contracts/ReflexerToken");
 
 var EventSchema = new mongoose.Schema(
   {
@@ -33,4 +35,21 @@ var EventSchema = new mongoose.Schema(
 );
 var EventModel = mongoose.model("events", EventSchema);
 
-module.exports = EventModel;
+const query = ({ limit, offset }) => {
+  const iface = new ethers.utils.Interface(ReflexerTokenABI);
+
+  return new Promise((resolve, reject) => {
+    return EventModel.find({})
+      .limit(limit)
+      .skip(offset)
+      .sort({ happenedAt: -1 })
+      .exec(async (err, tes) => {
+        if (err) return reject(err);
+        const count = await EventModel.count({}).exec();
+        const items = tes.map((te) => ({ ...te._doc, ...iface.parseLog(te) }));
+        return resolve({ count, items });
+      });
+  });
+};
+
+module.exports = { EventModel, query };

@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const EventModel = require("../models/Events");
+const {EventModel} = require("../models/Events");
 
 const ReflexerTokenABI = require("../contracts/ReflexerToken");
 
