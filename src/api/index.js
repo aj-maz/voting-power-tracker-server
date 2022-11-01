@@ -3,6 +3,7 @@ const { startStandaloneServer } = require("@apollo/server/standalone");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
 const Fetcher = require("../models/Fetcher");
+const Processor = require("../models/Processor");
 const { query } = require("../models/Events");
 
 const config = require("../config.json");
@@ -36,12 +37,20 @@ const apiServer = async () => {
       transactionHash: String!
       processed: Boolean!
     }
+
+    type Processor {
+      status: Int!
+      processed: Int
+      fetched: Int
+      lastProcessedBlock: String
+    }
   
     type Query {
         admins: [Admin!]!
         me: Admin
         fetcher: FetchingData!
         events(limit: Int!, offset: Int!): Events!
+        processor: Processor!
     }
 
     type Mutation {
@@ -56,6 +65,12 @@ const apiServer = async () => {
         pauseFetching: String!
         resumeFetching: String!
         resetFetching: String!
+
+        # Processor Methods
+        startProcessing: String!
+        pauseProcessing: String!
+        resumeProcessing: String!
+        resetProcessing: String!
     }
   `;
 
@@ -70,6 +85,9 @@ const apiServer = async () => {
       },
       events: (_, { limit, offset }) => {
         return query({ limit, offset });
+      },
+      processor: () => {
+        return Processor.get();
       },
     },
 
@@ -163,6 +181,22 @@ const apiServer = async () => {
       },
       resetFetching: () => {
         return Fetcher.reset();
+      },
+
+      startProcessing: () => {
+        return Processor.start();
+      },
+
+      pauseProcessing: () => {
+        return Processor.pause();
+      },
+
+      resumeProcessing: () => {
+        return Processor.resume();
+      },
+
+      resetProcessing: () => {
+        return Processor.reset();
       },
     },
   };

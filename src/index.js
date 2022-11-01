@@ -13,11 +13,11 @@ const Admin = require("./models/Admin");
 
 const apiServer = require("./api");
 
+const bot = require("./lib/Bot");
+
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
   //handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
-
-  const votingPowerJobQueue = JobQueue();
 
   let isAddingToQueue = false;
 

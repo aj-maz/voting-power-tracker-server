@@ -45,11 +45,18 @@ const query = ({ limit, offset }) => {
       .sort({ happenedAt: -1 })
       .exec(async (err, tes) => {
         if (err) return reject(err);
-        const count = await EventModel.count({}).exec();
+        const count = await EventModel.countDocuments({}).exec();
         const items = tes.map((te) => ({ ...te._doc, ...iface.parseLog(te) }));
         return resolve({ count, items });
       });
   });
 };
 
-module.exports = { EventModel, query };
+const counts = async () => {
+  return {
+    processed: await EventModel.countDocuments({ processed: true }),
+    total: await EventModel.countDocuments({}),
+  };
+};
+
+module.exports = { EventModel, query, counts };

@@ -6,7 +6,7 @@ const UserSchema = new mongoose.Schema(
     address: {
       type: String,
       required: true,
-      unique: true,
+      //unique: true,
     },
     currentBalance: {
       type: String,
@@ -65,12 +65,17 @@ const methods = {
   },
   commands: {
     createUser: (address) => {
-      return new Promise((resolve, reject) => {
-        const usr = new Users({ address });
-        return resolve(usr.save());
+      return new Promise(async (resolve, reject) => {
+        const user = await methods.queries.getUserByAddress(address);
+        if (user) {
+          return resolve(user);
+        } else {
+          const usr = new Users({ address });
+          return resolve(usr.save());
+        }
       });
     },
-    transferUser: (address, amount, to) => {
+    transferUser: (address, amount, to, timestamp) => {
       //console.log("Transfer user ", address, " ", amount, " ", to);
       return new Promise((resolve, reject) => {
         methods.queries
@@ -88,7 +93,7 @@ const methods = {
                 },
                 $push: {
                   balanceHistory: {
-                    timestamp: new Date(),
+                    timestamp,
                     amount: String(newBalance),
                   },
                 },
@@ -104,7 +109,7 @@ const methods = {
       });
     },
 
-    delegateUser: (address, amount, to) => {
+    delegateUser: (address, amount, to, timestamp) => {
       return new Promise((resolve, reject) => {
         methods.queries
           .getUserByAddress(address)
@@ -120,7 +125,7 @@ const methods = {
                 },
                 $push: {
                   delegationHistory: {
-                    timestamp: new Date(),
+                    timestamp,
                     amount: newVotingPower,
                   },
                 },
@@ -136,15 +141,11 @@ const methods = {
       });
     },
 
-    setDelegate: (address, amount) => {
+    setDelegate: (address, amount, timestamp) => {
       return new Promise((resolve, reject) => {
         methods.queries
           .getUserByAddress(address)
           .then((user) => {
-            console.log({
-              timestamp: new Date(),
-              amount: String(amount),
-            });
             return Users.updateOne(
               { address },
               {
@@ -154,7 +155,7 @@ const methods = {
                 },
                 $push: {
                   delegationHistory: {
-                    timestamp: new Date(),
+                    timestamp: timestamp,
                     amount: String(amount),
                   },
                 },
@@ -168,6 +169,10 @@ const methods = {
             return reject(err);
           });
       });
+    },
+
+    reset: async () => {
+      return await Users.deleteMany({});
     },
   },
 };
