@@ -13,6 +13,7 @@
     "apollo-server": "^3.10.3",
     "discord.js": "^14.6.0",
     "eth-sig-util": "^3.0.1",
+    "ethereum-block-by-date": "^1.4.6",
     "ethereumjs-util": "^7.1.5",
     "ethers": "^5.7.1",
     "graphql": "^16.6.0",

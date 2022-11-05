@@ -43,6 +43,8 @@ const apiServer = async () => {
       processed: Int
       fetched: Int
       lastProcessedBlock: String
+      alertSettings: String
+      processFrom: String
     }
   
     type Query {

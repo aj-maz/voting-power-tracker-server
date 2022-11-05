@@ -15,12 +15,42 @@ const apiServer = require("./api");
 
 const bot = require("./lib/Bot");
 
+const { isUserBalanceChangedAbsolute } = require("./lib/AlertCalculators");
+
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
   //handleTokenEventStream(provider)("token", config.TOKEN_ADDRESS);
 
-  let isAddingToQueue = false;
+  /*const dater = new EthDater(
+    provider // Ethers provider, required.
+  );
 
+  /*let b = new Date();
+  console.log("started doing with inhouse", b);
+
+  console.log(
+    await getBlockByTimestamp(provider)(
+      new Date("2022-05-20T13:20:40Z"),
+      14811356
+    )
+  );
+  console.log(`in house time: ${new Date() - b}ms`);
+
+  let a = new Date();
+  console.log("started doing with ethbbd", a);
+  let block = await dater.getDate(
+    "2022-05-20T13:20:40Z", // Date, required. Any valid moment.js value: string, milliseconds, Date() object, moment() object.
+    true, // Block after, optional. Search for the nearest block before or after the given date. By default true.
+    false // Refresh boundaries, optional. Recheck the latest block before request. By default false.
+  );
+  console.log(`ethbbd time: ${new Date() - a}ms`); */
+
+  // 14811356
+
+  /*console.log("here????", block);
+  console.log(
+    await getTotalSupplyAt(provider, config.TOKEN_ADDRESS)(block.block)
+  );*/
   /*const addToQueue = async () => {
     if (isAddingToQueue) return;
     isAddingToQueue = true;
@@ -65,7 +95,7 @@ const main = async () => {
     });
   }, 5);*/
 
-  Admin.methods.queries
+  /*Admin.methods.queries
     .getAll()
     .then((admins) => {
       if (admins.length === 0) {
@@ -75,7 +105,7 @@ const main = async () => {
           .catch((err) => console.log(err));
       }
     })
-    .catch((err) => console.log(err));
+    .catch((err) => console.log(err));*/
 
   apiServer();
 };

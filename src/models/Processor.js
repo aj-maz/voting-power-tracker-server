@@ -19,6 +19,33 @@ const JobQueue = require("../lib/JobQueue");
 const EventProcessor = require("../events/EventProcessor");
 const EventSerializer = require("../events/EventSerializer");
 
+const defaultAlertSettings = {
+  delegateRelative: {
+    active: true,
+    percent: 1,
+    message: "Voting power of $delegatee$ increased $percent$ in $time$ hours",
+    timeframe: 24,
+  },
+  delegateAmount: {
+    active: true,
+    amount: 10000000,
+    message: "Voting power of $delegatee$ increased $amount$ in $time$ hours",
+    timeframe: 24,
+  },
+  transferRelative: {
+    active: true,
+    percent: 1.5,
+    message: "$percent$% of tokens transfered to $to$ in $time$ hours",
+    timeframe: 24,
+  },
+  transferAmount: {
+    active: true,
+    amount: 20000000,
+    message: "$amount$ tokens transfered from $from$ to $to$",
+    timeframe: 24,
+  },
+};
+
 if (isMainThread) {
   const worker = new Worker(__filename, {});
 
@@ -32,6 +59,10 @@ if (isMainThread) {
         processed: eventCounts.processed,
         fetched: eventCounts.total,
         lastProcessedBlock: localStorage.getItem("lastProcessedBlock"),
+        processFrom: "",
+        alertSettings: localStorage.getItem("alertSettings")
+          ? localStorage.getItem("alertSettings")
+          : JSON.stringify(defaultAlertSettings),
       };
     },
     start: () => {
@@ -70,7 +101,7 @@ if (isMainThread) {
       notProcessedEvents.forEach((ev, i) => {
         //  console.log(ev)
         if (i % 1000 == 0) {
-         // console.log(i);
+          // console.log(i);
         }
         votingPowerJobQueue.addJob(ev);
       });
@@ -100,7 +131,7 @@ if (isMainThread) {
       runnerId = setInterval(() => {
         if (!paused[0]) {
           votingPowerJobQueue.execute(async (currentJob) => {
-           // console.log("processing: ", currentJob._id);
+            // console.log("processing: ", currentJob._id);
             try {
               await EventProcessor("", null)(currentJob);
               await setEventProcessed(currentJob._id);
@@ -112,14 +143,14 @@ if (isMainThread) {
       }, 5);
     }
 
-    return {
+    const returned =  {
       start: () => {
         localStorage.setItem("processingStatus", 1);
         addToQueue();
         runnerId = setInterval(() => {
           if (!paused[0]) {
             votingPowerJobQueue.execute(async (currentJob) => {
-           //   console.log("processing: ", currentJob._id);
+              //   console.log("processing: ", currentJob._id);
               try {
                 await EventProcessor("", null)(currentJob);
                 await setEventProcessed(currentJob._id);
@@ -142,6 +173,7 @@ if (isMainThread) {
         return "done";
       },
       reset: async () => {
+        returned.pause()
         localStorage.setItem("processingStatus", 0);
         isRunning = 0;
         paused[0] = false;
@@ -156,6 +188,8 @@ if (isMainThread) {
         return "done";
       },
     };
+
+    return returned
   };
 
   const processor = Processor();

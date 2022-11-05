@@ -62,6 +62,12 @@ const methods = {
         });
       });
     },
+
+    getUserBalanceAtLastTimeframe: (address, currentTime, timeframe) => {
+      return new Promise((resolve, reject) => {
+        return resolve("hello");
+      });
+    },
   },
   commands: {
     createUser: (address) => {
@@ -176,6 +182,11 @@ const methods = {
     },
   },
 };
+
+methods.queries
+  .getUserBalanceAtLastTimeframe("qwe", "qwe", "qwe")
+  .then((a) => console.log(a))
+  .catch((err) => console.log(err));
 
 module.exports = {
   Users,
