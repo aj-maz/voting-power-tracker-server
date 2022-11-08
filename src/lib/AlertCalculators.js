@@ -5,6 +5,12 @@ const config = require("../config.json");
 const LocalStorage = require("node-localstorage").LocalStorage;
 const path = require("path");
 const ReflexerTokenABI = require("../contracts/ReflexerToken");
+const {
+  findUserBalanceAtBlocknumber,
+  findUserBalanceAtTimestamp,
+  findVotingPowerAtBlocknumber,
+  findVotingPowerAtTimestamp,
+} = require("./graphService");
 
 const localStorage = new LocalStorage(
   path.resolve(__dirname, "..", "..", "data")
@@ -28,33 +34,48 @@ const isUserDelegateChangedRelative = async (
     provider
   );
 
-  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
-  //Get timeframe ago block
-  const refrenceBlock = await getBlockByTimestamp(provider)(
-    refrenceTime,
+  const currentVotingPower = (await findVotingPowerAtBlocknumber(
+    address,
     blockNumber
-  );
-  // Get total supply at current block
-  const totalSupplyAtCurrentBlock = await getTotalSupplyAtBlock(
-    provider,
-    localStorage.getItem("tokenAddress")
-  )(blockNumber);
+  ))
+    ? (await findVotingPowerAtBlocknumber(address, blockNumber)).amount
+    : (
+        await contract.functions.getCurrentVotes(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
 
-  // Get Voting power at refrence block
-  const refrenceVotes = await contract.functions.getCurrentVotes(address, {
-    blockTag: refrenceBlock.number,
-  });
-  // Get Voting power at current blocktem("tokenAddress")
-  const currentVotes = await contract.functions.getCurrentVotes(address, {
-    blockTag: blockNumber,
-  });
+  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
+
+  const refrenceVotingPower = await findVotingPowerAtTimestamp(
+    address,
+    refrenceTime
+  );
 
   // Find the relative difference
-  const relativeDifference =
-    (currentVotes - refrenceVotes) / totalSupplyAtCurrentBlock;
-  // Calculate the percentage
-  if (relativeDifference * 100 >= percent) {
-    return relativeDifference * 100;
+  const relativeDifferencePercent = ethers.BigNumber.from(currentVotingPower)
+    .mul(10 ** 12)
+    .sub(
+      ethers.BigNumber.from(
+        refrenceVotingPower ? refrenceVotingPower.amount : 0
+      ).mul(10 ** 12)
+    )
+    .div(
+      ethers.BigNumber.from(
+        refrenceVotingPower
+          ? refrenceVotingPower.block.totalSupply
+          : (
+              await contract.functions.totalSupply({
+                blockTag: blockNumber,
+              })
+            )[0]
+      )
+    );
+
+  if (
+    relativeDifferencePercent.gte(ethers.BigNumber.from(percent * 10 ** 12))
+  ) {
+    return Number(relativeDifferencePercent) / 10 ** 10;
   } else {
     return false;
   }
@@ -71,27 +92,29 @@ const isUserDelegateChangedAbsolute = async (
     provider
   );
 
-  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
-  //Get timeframe ago block
-  const refrenceBlock = await getBlockByTimestamp(provider)(
-    refrenceTime,
+  const currentVotingPower = (await findVotingPowerAtBlocknumber(
+    address,
     blockNumber
+  ))
+    ? (await findVotingPowerAtBlocknumber(address, blockNumber)).amount
+    : (
+        await contract.functions.getCurrentVotes(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
+
+  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
+
+  const refrenceVotingPower = await findVotingPowerAtTimestamp(
+    address,
+    refrenceTime
+  ).amount;
+
+  const absoulteDiff = ethers.BigNumber.from(currentVotingPower).sub(
+    ethers.BigNumber.from(refrenceVotingPower ? refrenceVotingPower : 0)
   );
-
-  // Get Voting power at refrence block
-  const refrenceVotes = await contract.functions.getCurrentVotes(address, {
-    blockTag: refrenceBlock.number,
-  });
-  // Get Voting power at current block
-  const currentVotes = await contract.functions.getCurrentVotes(address, {
-    blockTag: blockNumber,
-  });
-
-  // Find the relative difference
-  const absoulteDiff = currentVotes - refrenceVotes;
-  // Calculate the percentage
   if (absoulteDiff >= amount) {
-    return absoulteDiff;
+    return String(absoulteDiff);
   } else {
     return false;
   }
@@ -108,33 +131,47 @@ const isUserBalanceChangedRelative = async (
     provider
   );
 
-  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
-  //Get timeframe ago block
-  const refrenceBlock = await getBlockByTimestamp(provider)(
-    refrenceTime,
+  const currentBalance = (await findUserBalanceAtBlocknumber(
+    address,
     blockNumber
-  );
-  // Get total supply at current block
-  const totalSupplyAtCurrentBlock = await getTotalSupplyAtBlock(
-    provider,
-    localStorage.getItem("tokenAddress")
-  )(blockNumber);
+  ))
+    ? (await findUserBalanceAtBlocknumber(address, blockNumber)).amount
+    : (
+        await contract.functions.balanceOf(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
 
-  // Get Balance at refrence block
-  const refrenceBalance = await contract.functions.balanceOf(address, {
-    blockTag: refrenceBlock.number,
-  });
-  // Get Balannce at current block
-  const currentBalance = await contract.functions.balanceOf(address, {
-    blockTag: blockNumber,
-  });
+  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
+
+  const refrenceBalance = await findUserBalanceAtTimestamp(
+    address,
+    refrenceTime
+  );
 
   // Find the relative difference
-  const relativeDifference =
-    (currentBalance - refrenceBalance) / totalSupplyAtCurrentBlock;
+  const relativeDifferencePercent = ethers.BigNumber.from(currentBalance)
+    .mul(10 ** 12)
+    .sub(
+      ethers.BigNumber.from(refrenceBalance ? refrenceBalance.amount : 0).mul(
+        10 ** 12
+      )
+    )
+    .div(
+      refrenceBalance
+        ? ethers.BigNumber.from(refrenceBalance.block.totalSupply)
+        : (
+            await contract.functions.totalSupply({
+              blockTag: blockNumber,
+            })
+          )[0]
+    );
+
   // Calculate the percentage
-  if (relativeDifference * 100 >= percent) {
-    return relativeDifference * 100;
+  if (
+    relativeDifferencePercent.gte(ethers.BigNumber.from(percent * 10 ** 12))
+  ) {
+    return Number(relativeDifferencePercent) / 10 ** 10;
   } else {
     return false;
   }
@@ -151,40 +188,34 @@ const isUserBalanceChangedAbsolute = async (
     provider
   );
 
-  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
-  console.log("refrence Time: ", refrenceTime);
-  //Get timeframe ago block
-  /* const refrenceBlock = await getBlockByTimestamp(provider)(
-    refrenceTime,
+  const currentBalance = (await findUserBalanceAtBlocknumber(
+    address,
     blockNumber
+  ))
+    ? (await findUserBalanceAtBlocknumber(address, blockNumber)).amount
+    : (
+        await contract.functions.balanceOf(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
+
+  const refrenceTime = new Date(happenedAt).addHours(-1 * timeframe);
+
+  const refrenceBalance = (await findUserBalanceAtTimestamp(
+    address,
+    refrenceTime
+  ))
+    ? (await findUserBalanceAtTimestamp(address, refrenceTime)).amount
+    : 0;
+
+  const absoulteDiff = ethers.BigNumber.from(currentBalance).sub(
+    ethers.BigNumber.from(refrenceBalance)
   );
-
-  console.log("refrence block: ", refrenceBlock);
-
-  // Get Balance at refrence block
-  const refrenceBalance = await contract.functions.balanceOf(address, {
-    blockTag: refrenceBlock.number,
-  }); */
-  //
-  //console.log("refrence balance: ", refrenceBalance);
-
-  // Get Balannce at current block
-  console.log("start to get current balance");
-  const currentBalance = await contract.balanceOf(address, {
-    blockTag: blockNumber,
-  });
-
-  console.log("current balance: ", currentBalance);
-
-  // Find the relative difference
-  //const absoulteDiff = currentBalance - refrenceBalance;
-  //console.log("absolute diff: ", absoulteDiff);
-  // Calculate the percentage
-  /* if (absoulteDiff >= amount) {
-    return absoulteDiff;
+  if (absoulteDiff >= amount) {
+    return String(absoulteDiff);
   } else {
     return false;
-  } */
+  }
 };
 
 module.exports = {

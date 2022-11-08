@@ -10,7 +10,7 @@ const config = require("../config.json");
 
 const isVerifiedSign = require("../lib/isVerifiedSign");
 
-const apiServer = async () => {
+const apiServer = async (provider) => {
   const typeDefs = `#graphql
     type Admin {
         _id: ID!
@@ -69,7 +69,7 @@ const apiServer = async () => {
         resetFetching: String!
 
         # Processor Methods
-        startProcessing: String!
+        startProcessing(notifSettings: String!, processingCursor: Int): String!
         pauseProcessing: String!
         resumeProcessing: String!
         resetProcessing: String!
@@ -185,8 +185,16 @@ const apiServer = async () => {
         return Fetcher.reset();
       },
 
-      startProcessing: () => {
-        return Processor.start();
+      startProcessing: async (_, { notifSettings, processingCursor }) => {
+        const currentBlockNumber = (await provider.getBlock()).number;
+        console.log(currentBlockNumber, processingCursor);
+        Fetcher.start({
+          tokenAddress: config.TOKEN_ADDRESS,
+          tokenCreationBlock: processingCursor
+            ? processingCursor
+            : currentBlockNumber,
+        });
+        return Processor.start(notifSettings);
       },
 
       pauseProcessing: () => {
@@ -197,7 +205,16 @@ const apiServer = async () => {
         return Processor.resume();
       },
 
-      resetProcessing: () => {
+      resetProcessing: async () => {
+        function sleep(ms) {
+          return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        Processor.pause();
+
+        Fetcher.pause();
+        Fetcher.reset();
+        await sleep(500);
         return Processor.reset();
       },
     },

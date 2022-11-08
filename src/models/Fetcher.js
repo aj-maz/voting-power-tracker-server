@@ -73,7 +73,7 @@ const Fetcher = () => {
       localStorage.setItem("lastFetchedBlock", "");
       paused[0] = false;
       isRunning = false;
-      await Events.deleteMany({});
+      await Events.EventModel.deleteMany({});
       return "done";
       // Should actualy resume the fetching
       //return "done";

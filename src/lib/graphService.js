@@ -1,4 +1,5 @@
 const { request, gql } = require("graphql-request");
+const config = require("../config.json");
 
 const userQuery = gql`
   query user($address: ID!) {
@@ -32,8 +33,7 @@ const userQuery = gql`
   }
 `;
 
-const graphqlServer =
-  "https://api.thegraph.com/subgraphs/name/ajand/reflexer_flx";
+const graphqlServer = config.SUBGRAPH;
 
 const getUser = async (userAddress) => {
   return request(graphqlServer, userQuery, { address: userAddress }).then(
@@ -75,18 +75,72 @@ const findUserBalanceAtTimestamp = async (userId, timestamp) => {
       return bH.block.at < timestamp;
     });
 
-  return pastTimestampBalances.at(-1).amount;
+  return pastTimestampBalances.at(-1);
 };
 
-const main = async () => {
-  const user = await getUser("0x00000000000003441d59dde9a90bffb1cd3fabf1");
-  console.log(
-    await findUserBalanceAtTimestamp(
-      "0x00000000003b3cc22af3ae1eac0440bcee416b40",
-      new Date("2022-08-12T00:57:37.000Z")
-    )
-  );
-  /// 37820465139578
+const findUserBalanceAtBlocknumber = async (userId, blockNumber) => {
+  const user = await getUser(userId);
+
+  let userBlockNumberBalance = user.balanceHistory
+    .map((bH) => ({
+      ...bH,
+      block: {
+        ...bH.block,
+        at: new Date(Number(bH.block.at) * 1000),
+        number: Number(bH.block.number),
+      },
+    }))
+    .find((bH) => {
+      return Number(bH.block.number) == blockNumber;
+    });
+
+  return userBlockNumberBalance;
 };
 
-main();
+const findVotingPowerAtTimestamp = async (userId, timestamp) => {
+  const user = await getUser(userId);
+
+  let pastTimestampVotingPower = user.votingPowerHistory
+    .map((bH) => ({
+      ...bH,
+      block: {
+        ...bH.block,
+        at: new Date(Number(bH.block.at) * 1000),
+        number: Number(bH.block.number),
+      },
+    }))
+    .sort((a, b) => Number(a.block.number) - Number(b.block.number))
+    .filter((bH) => {
+      return bH.block.at < timestamp;
+    });
+
+  return pastTimestampVotingPower.at(-1);
+};
+
+const findVotingPowerAtBlocknumber = async (userId, blockNumber) => {
+  const user = await getUser(userId);
+
+  let userBlockNumberBalance = user.votingPowerHistory
+    .map((bH) => ({
+      ...bH,
+      block: {
+        ...bH.block,
+        at: new Date(Number(bH.block.at) * 1000),
+        number: Number(bH.block.number),
+      },
+    }))
+    .find((bH) => {
+      return Number(bH.block.number) == blockNumber;
+    });
+
+  return userBlockNumberBalance;
+};
+
+module.exports = {
+  getBlock,
+  getUser,
+  findUserBalanceAtBlocknumber,
+  findUserBalanceAtTimestamp,
+  findVotingPowerAtTimestamp,
+  findVotingPowerAtBlocknumber,
+};

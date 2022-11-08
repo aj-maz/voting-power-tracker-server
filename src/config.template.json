@@ -1,0 +1,10 @@
+{
+  "BOT_TOKEN": "",
+  "RPC_URL": "",
+  "MONGOOSE_CONNECTION_URL": "",
+  "CLIENT_ID": "",
+  "TOKEN_ADDRESS": "",
+  "INITIAL_ADMIN": "",
+  "JWT_SECRET": "",
+  "SUBGRAPH": ""
+}

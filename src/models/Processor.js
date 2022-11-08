@@ -23,28 +23,34 @@ const defaultAlertSettings = {
   delegateRelative: {
     active: true,
     percent: 1,
-    message: "Voting power of $delegatee$ increased $percent$ in $time$ hours",
+    message:
+      "Voting power of $delegatee$ increased $percent$% in $time$ hours at $at$",
     timeframe: 24,
   },
   delegateAmount: {
     active: true,
     amount: 10000000,
-    message: "Voting power of $delegatee$ increased $amount$ in $time$ hours",
+    message:
+      "Voting power of $delegatee$ increased $amount$ in $time$ hours at $at$",
     timeframe: 24,
   },
   transferRelative: {
     active: true,
     percent: 1.5,
-    message: "$percent$% of tokens transfered to $to$ in $time$ hours",
+    message: "$percent$% of tokens transfered to $to$ in $time$ hours at $at$",
     timeframe: 24,
   },
   transferAmount: {
     active: true,
     amount: 20000000,
-    message: "$amount$ tokens transfered from $from$ to $to$",
+    message: "$amount$ tokens transfered from $from$ to $to$ at $at$",
     timeframe: 24,
   },
 };
+
+if (!localStorage.getItem("alertSettings")) {
+  localStorage.setItem("alertSettings", JSON.stringify(defaultAlertSettings));
+}
 
 if (isMainThread) {
   const worker = new Worker(__filename, {});
@@ -65,8 +71,9 @@ if (isMainThread) {
           : JSON.stringify(defaultAlertSettings),
       };
     },
-    start: () => {
+    start: (notifSettings) => {
       worker.postMessage("start");
+      localStorage.setItem("alertSettings", notifSettings);
       return "done";
     },
     pause: () => {
@@ -90,6 +97,17 @@ if (isMainThread) {
     let isAddingToQueue = false;
     let isRunning = parseInt(localStorage.getItem("processingStatus")) > 0;
     let paused = [parseInt(localStorage.getItem("processingStatus")) == 2];
+
+    const getSettings = () => ({
+      status: localStorage.getItem("processingStatus")
+        ? Number(localStorage.getItem("processingStatus"))
+        : 0,
+      lastProcessedBlock: localStorage.getItem("lastProcessedBlock"),
+      processFrom: "",
+      alertSettings: localStorage.getItem("alertSettings")
+        ? JSON.parse(localStorage.getItem("alertSettings"))
+        : defaultAlertSettings,
+    });
 
     const addToQueue = async () => {
       if (isAddingToQueue) return;
@@ -127,39 +145,52 @@ if (isMainThread) {
       addToQueue();
       setInterval(async () => {
         addToQueue();
-      }, 1000 * 30);
+      }, 1000 * 20);
       runnerId = setInterval(() => {
         if (!paused[0]) {
           votingPowerJobQueue.execute(async (currentJob) => {
-            // console.log("processing: ", currentJob._id);
+            const currJobEvent = await Events.findOne({ _id: currentJob._id });
+            if (currJobEvent.processed) {
+              return;
+            }
+
             try {
-              await EventProcessor("", null)(currentJob);
+              await EventProcessor("", null, getSettings())(currentJob);
               await setEventProcessed(currentJob._id);
             } catch (err) {
               console.log(err);
             }
           });
         }
-      }, 5);
+      }, 1 * 1000);
     }
 
-    const returned =  {
+    const returned = {
       start: () => {
         localStorage.setItem("processingStatus", 1);
         addToQueue();
+        setInterval(async () => {
+          addToQueue();
+        }, 1000 * 10);
         runnerId = setInterval(() => {
           if (!paused[0]) {
             votingPowerJobQueue.execute(async (currentJob) => {
               //   console.log("processing: ", currentJob._id);
+              const currJobEvent = await Events.findOne({
+                _id: currentJob._id,
+              });
+              if (currJobEvent.processed) {
+                return;
+              }
               try {
-                await EventProcessor("", null)(currentJob);
+                await EventProcessor("", null, getSettings())(currentJob);
                 await setEventProcessed(currentJob._id);
               } catch (err) {
                 console.log(err);
               }
             });
           }
-        }, 5);
+        }, 1 * 1000);
         return "done";
       },
       pause: () => {
@@ -173,7 +204,7 @@ if (isMainThread) {
         return "done";
       },
       reset: async () => {
-        returned.pause()
+        returned.pause();
         localStorage.setItem("processingStatus", 0);
         isRunning = 0;
         paused[0] = false;
@@ -189,7 +220,7 @@ if (isMainThread) {
       },
     };
 
-    return returned
+    return returned;
   };
 
   const processor = Processor();

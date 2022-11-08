@@ -7,6 +7,12 @@ const {
   parentPort,
   workerData,
 } = require("node:worker_threads");
+const LocalStorage = require("node-localstorage").LocalStorage;
+const path = require("path");
+
+const localStorage = new LocalStorage(
+  path.resolve(__dirname, "..", "..", "data")
+);
 
 const commands = [
   {
@@ -17,58 +23,69 @@ const commands = [
 
 const rest = new REST({ version: "10" }).setToken(config.BOT_TOKEN);
 
-const CLIENT_ID = "1037028431558348881";
+const CLIENT_ID = config.CLIENT_ID;
 
-if (isMainThread) {
-  const worker = new Worker(__filename, {});
-} else {
-  const bot = () => {
-    client.login(config.BOT_TOKEN);
+const getActiveChannels = () => {
+  return JSON.parse(localStorage.getItem("active_channels"));
+};
 
-    (async () => {
-      try {
-        console.log("Started refreshing application (/) commands.");
+const setActiveChannel = (channelId) => {
+  const currentChannels = new Set(
+    JSON.parse(localStorage.getItem("active_channels"))
+  );
+  currentChannels.add(channelId);
 
-        await rest.put(Routes.applicationCommands(CLIENT_ID), {
-          body: commands,
-        });
+  localStorage.setItem("active_channels", JSON.stringify([...currentChannels]));
+};
 
-        console.log("Successfully reloaded application (/) commands.");
-      } catch (error) {
-        console.error(error);
+const runBot = async () => {
+  client.login(config.BOT_TOKEN);
+
+  (async () => {
+    try {
+      console.log("Started refreshing application (/) commands.");
+
+      await rest.put(Routes.applicationCommands(CLIENT_ID), {
+        body: commands,
+      });
+
+      console.log("Successfully reloaded application (/) commands.");
+    } catch (error) {
+      console.error(error);
+    }
+  })();
+
+  client.on("ready", () => {
+    console.log(`Logged in as ${client.user.tag}!`);
+  });
+
+  client.on("interactionCreate", async (interaction) => {
+    try {
+      if (!interaction.isChatInputCommand()) return;
+      if (interaction.commandName === "init") {
+        setActiveChannel(interaction.channelId);
+        await interaction.reply("Initialized!");
       }
-    })();
+    } catch (err) {
+      console.log(err);
+    }
+  });
 
-    client.on("ready", () => {
-      console.log(`Logged in as ${client.user.tag}!`);
-    });
-
-    const targetChannels = new Set();
-
-    client.on("interactionCreate", async (interaction) => {
-      console.log(interaction);
-      try {
-        if (!interaction.isChatInputCommand()) return;
-        if (interaction.commandName === "init") {
-          targetChannels.add(interaction.channelId);
-          console.log("already here");
-          await interaction.reply("Initialize!");
-          console.log("but not here");
+  const sendMessage = async (message) => {
+    [...getActiveChannels()]
+      .map((channelId) => {
+        return client.channels.cache.get(channelId);
+      })
+      .forEach((channel) => {
+        if (channel) {
+          channel.send(message);
         }
-      } catch (err) {
-        console.log(err);
-      }
-    });
-
-    setInterval(() => {
-      console.log([...targetChannels]);
-      [...targetChannels]
-        .map((channelId) => client.channels.cache.get(channelId))
-        .forEach((channel) => {
-          channel.send("Hayloooo");
-        });
-    }, 5000);
+      });
   };
 
-  bot();
-}
+  return {
+    sendMessage,
+  };
+};
+
+module.exports = runBot;

@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const {EventModel} = require("../models/Events");
+const { EventModel } = require("../models/Events");
 
 const ReflexerTokenABI = require("../contracts/ReflexerToken");
 
@@ -18,7 +18,6 @@ const EventSerializer = (address, startingBlock = 0) => {
       }
     )
       .sort({ blockNumber: 1, logIndex: 1 })
-      .limit(500)
       .select({
         blockNumber: 1,
         _id: 1,
