@@ -2,24 +2,19 @@ require("./mongooseConnector");
 const { ethers } = require("ethers");
 const config = require("./config.json");
 
-const EventSerializer = require("./events/EventSerializer");
-
-const EventProcessor = require("./events/EventProcessor");
-
-const handleTokenEventStream = require("./lib/handleTokenEventStream");
-const JobQueue = require("./lib/JobQueue");
-
 const Admin = require("./models/Admin");
 
 const apiServer = require("./api");
 
-const {
-  isUserBalanceChangedAbsolute,
-  isUserBalanceChangedRelative,
-} = require("./lib/AlertCalculators");
+const AddressResolver = require("./lib/AddressResolver");
 
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
+
+  console.log(
+    "from resolve",
+    await AddressResolver("0x4A87a2A017Be7feA0F37f03F3379d43665486Ff8")
+  );
 
   Admin.methods.queries
     .getAll()

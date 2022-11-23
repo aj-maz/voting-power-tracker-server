@@ -39,11 +39,11 @@ const cleanFixed = (str) => {
   }
 };
 
-let alreadyStartedProcessing = new Set()
+let alreadyStartedProcessing = new Set();
 
 setInterval(() => {
-  alreadyStartedProcessing = new Set()
-}, 1000 * 3600 * 2)
+  alreadyStartedProcessing = new Set();
+}, 1000 * 3600 * 2);
 
 const EventProcessor = (variant, discordManager, settings) => async (ev) => {
   //console.log("Processing Event ....", ev)
@@ -54,11 +54,11 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
 
   const { alertSettings } = settings;
 
-  if(alreadyStartedProcessing.has(ev._id)) {
-    return
+  if (alreadyStartedProcessing.has(ev._id)) {
+    return;
   }
 
-  alreadyStartedProcessing.add(ev._id)
+  alreadyStartedProcessing.add(ev._id);
 
   try {
     switch (ev.name) {
@@ -204,7 +204,7 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
 
             if (absChange) {
               sendM(
-                settings.alertSettings.transferAmount.message
+                `${settings.alertSettings.transferAmount.message} https://etherscan.org/tx/0xasdf`
                   .replace(
                     "$time$",
                     `${settings.alertSettings.transferAmount.timeframe}`
