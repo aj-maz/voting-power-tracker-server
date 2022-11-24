@@ -4,7 +4,10 @@ const LocalStorage = require("node-localstorage").LocalStorage;
 const EventMiner = require("./EventMiner");
 const SingleEventSaver = require("./SingleEventSaver");
 const GetBlockTimestamp = require("../lib/GetBlockTimestamp");
+const GetTransactionFrom = require("../lib/GetTransactionFrom");
 const config = require("../config.json");
+
+let transactionsFromSet = new Map();
 
 const localStorage = new LocalStorage(
   path.resolve(__dirname, "..", "..", "data")
@@ -32,8 +35,14 @@ const fetchEvents =
             const happenedAt = await GetBlockTimestamp(provider)(
               event.blockNumber
             );
+            const from = await GetTransactionFrom(provider)(
+              event.transactionHash
+            );
 
-            SingleEventSaver(happenedAt)(event)
+            SingleEventSaver(
+              happenedAt,
+              from
+            )(event)
               .then((r) => console.log("event saved"))
               .catch((err) => console.log(err));
           });

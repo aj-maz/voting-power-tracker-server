@@ -1,6 +1,6 @@
 const { EventModel } = require("../models/Events");
 
-const SingleEventSaver = (happenedAt) => (ev) => {
+const SingleEventSaver = (happenedAt, from) => (ev) => {
   const eventString = JSON.stringify(ev);
   const parsedEvent = JSON.parse(eventString);
   const uniqueId = `${parsedEvent.blockNumber}:${parsedEvent.transactionIndex}:${parsedEvent.logIndex}`;
@@ -14,7 +14,12 @@ const SingleEventSaver = (happenedAt) => (ev) => {
       console.log(uniqueId);
       if (err) return reject(err);
       if (tf) return resolve(tf);
-      const ntf = new EventModel({ ...humanizedEvent, uniqueId, happenedAt });
+      const ntf = new EventModel({
+        ...humanizedEvent,
+        from,
+        uniqueId,
+        happenedAt,
+      });
       return resolve(ntf.save());
     });
   });

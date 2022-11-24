@@ -19,6 +19,8 @@ const MineTokenEvents =
       provider
     );
 
+    console.log("are we here???");
+
     const queryBatch = async (from, to, skip, attempt = 1) => {
       const sleep = (timeout) =>
         new Promise((resolve, reject) => {

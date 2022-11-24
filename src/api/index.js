@@ -186,7 +186,15 @@ const apiServer = async (provider) => {
       },
 
       startProcessing: async (_, { notifSettings, processingCursor }) => {
+        try {
+          console.log(await provider.getBlock());
+        } catch (err) {
+          console.log(err);
+        }
+
         const currentBlockNumber = (await provider.getBlock()).number;
+        console.log("here we are");
+
         console.log(currentBlockNumber, processingCursor);
         Fetcher.start({
           tokenAddress: config.TOKEN_ADDRESS,

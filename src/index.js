@@ -6,15 +6,8 @@ const Admin = require("./models/Admin");
 
 const apiServer = require("./api");
 
-const AddressResolver = require("./lib/AddressResolver");
-
 const main = async () => {
   const provider = new ethers.providers.JsonRpcProvider(config.RPC_URL);
-
-  console.log(
-    "from resolve",
-    await AddressResolver("0x4A87a2A017Be7feA0F37f03F3379d43665486Ff8")
-  );
 
   Admin.methods.queries
     .getAll()

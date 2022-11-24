@@ -30,6 +30,10 @@ var EventSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    from: {
+      type: String,
+      required: true,
+    },
   },
   { strict: false }
 );
@@ -46,8 +50,7 @@ const query = ({ limit, offset }) => {
       .exec(async (err, tes) => {
         if (err) return reject(err);
         const count = await EventModel.countDocuments({}).exec();
-        const items = tes
-          .map((te) => ({ ...te._doc, ...iface.parseLog(te) }))
+        const items = tes.map((te) => ({ ...te._doc, ...iface.parseLog(te) }));
         return resolve({ count, items });
       });
   });

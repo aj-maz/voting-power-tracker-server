@@ -5,6 +5,7 @@ const ReflexerTokenABI = require("../contracts/ReflexerToken");
 const TokenEventFilterCreator = require("../events/TokenEventFilterCreator");
 const SingleEventSaver = require("../events/SingleEventSaver");
 const GetBlockTimestamp = require("./GetBlockTimestamp");
+const GetTransactionFrom = require("../lib/GetTransactionFrom");
 const LocalStorage = require("node-localstorage").LocalStorage;
 
 const localStorage = new LocalStorage(
@@ -51,8 +52,14 @@ const handleTokenEventStream =
               const happenedAt = await GetBlockTimestamp(provider)(
                 event.blockNumber
               );
-              console.log(event);
-              SingleEventSaver(happenedAt)(event)
+              const from = await GetTransactionFrom(provider)(
+                event.transactionHash
+              );
+
+              SingleEventSaver(
+                happenedAt,
+                from
+              )(event)
                 .then((r) => console.log("event saved"))
                 .catch((err) => console.log(err));
               localStorage.setItem(`lastFetchedBlock`, event.blockNumber);

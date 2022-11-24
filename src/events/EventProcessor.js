@@ -12,9 +12,21 @@ const {
   isUserBalanceChangedRelative,
   isUserDelegateChangedAbsolute,
   isUserDelegateChangedRelative,
+  getBalance,
+  getPrevBalance,
+  getPrevVp,
+  getVp,
 } = require("../lib/AlertCalculators");
 const runBot = require("../lib/Bot");
 const { ethers } = require("ethers");
+const AddressResolver = require("../lib/AddressResolver");
+
+const {
+  findUserBalanceAtBlocknumber,
+  findUserBalanceAtTimestamp,
+  findVotingPowerAtBlocknumber,
+  findVotingPowerAtTimestamp,
+} = require("../lib/graphService");
 
 /// https://discord.com/oauth2/authorize?client_id=1037028431558348881&permissions=3072&scope=bot
 
@@ -46,6 +58,7 @@ setInterval(() => {
 }, 1000 * 3600 * 2);
 
 const EventProcessor = (variant, discordManager, settings) => async (ev) => {
+  console.log("processing event ...", ev);
   //console.log("Processing Event ....", ev)
 
   // Check if user does exist or not
@@ -67,19 +80,43 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
       }
       case "DelegateVotesChanged": {
         console.log("here");
-        if (alertSettings.delegateRelative.active) {
-          const relativeChange = await isUserDelegateChangedRelative(
-            {
-              blockNumber: ev.blockNumber,
-              happenedAt: new Date(ev.happenedAt),
-            },
-            ev.args.delegate.toLowerCase(),
-            {
-              percent: alertSettings.delegateRelative.percent,
-              timeframe: alertSettings.delegateRelative.timeframe,
-            }
-          );
+        const absChange = await isUserDelegateChangedAbsolute(
+          {
+            blockNumber: ev.blockNumber,
+            happenedAt: new Date(ev.happenedAt),
+          },
+          ev.args.delegate.toLowerCase(),
+          {
+            amount: alertSettings.delegateAmount.amount,
+            timeframe: alertSettings.delegateAmount.timeframe,
+          }
+        );
 
+        const relativeChange = await isUserDelegateChangedRelative(
+          {
+            blockNumber: ev.blockNumber,
+            happenedAt: new Date(ev.happenedAt),
+          },
+          ev.args.delegate.toLowerCase(),
+          {
+            percent: alertSettings.delegateRelative.percent,
+            timeframe: alertSettings.delegateRelative.timeframe,
+          }
+        );
+
+        const delegateUser = (await methods.queries.doesUserExists(
+          ev.args.delegate
+        ))
+          ? await methods.queries.getUserByAddress(ev.args.delegate)
+          : await methods.commands.createUser(ev.args.delegate);
+
+        await methods.commands.setDelegate(
+          delegateUser.address,
+          ev.args.newBalance,
+          ev.happenedAt
+        );
+
+        if (alertSettings.delegateRelative.active) {
           if (relativeChange) {
             sendM(
               settings.alertSettings.delegateRelative.message
@@ -88,29 +125,72 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
                   `${settings.alertSettings.delegateRelative.timeframe}`
                 )
                 .replace("$delegatee$", ev.args.delegate)
-
-                .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
                 .replace(
                   "$at$",
                   moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
                 )
+                .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
+                .replace(
+                  "$amount$",
+                  Number(ethers.utils.formatEther(absChange)).toFixed(5)
+                )
+                .replace("$from$", ev.from)
+                .replace(
+                  "$resolvedFrom$",
+                  `${ev.from} - ${AddressResolver(ev.from)}`
+                )
+                .replace("$to$", ev.args.delegate)
+                .replace(
+                  "$resolvedTo$",
+                  `${ev.args.delegate} - ${AddressResolver(ev.args.delegate)}`
+                )
+                .replace(
+                  "$prevBalance$",
+                  `${
+                    (await getPrevBalance(ev.args.delegate, ev.blockNumber))
+                      .amount
+                  } - ${cleanFixed(
+                    (
+                      await getPrevBalance(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}%`
+                )
+                .replace(
+                  "$finalBalance$",
+                  `${
+                    (await getBalance(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getBalance(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace(
+                  "$prevVp$",
+                  `${
+                    (await getPrevVp(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getPrevVp(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace(
+                  "$finalVp$",
+                  `${
+                    (await getVp(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getVp(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace("$tx$", ev.transactionHash)
             );
           }
         }
 
         if (alertSettings.delegateAmount.active) {
-          const absChange = await isUserDelegateChangedAbsolute(
-            {
-              blockNumber: ev.blockNumber,
-              happenedAt: new Date(ev.happenedAt),
-            },
-            ev.args.delegate.toLowerCase(),
-            {
-              amount: alertSettings.delegateAmount.amount,
-              timeframe: alertSettings.delegateAmount.timeframe,
-            }
-          );
-
           if (absChange) {
             sendM(
               settings.alertSettings.delegateAmount.message
@@ -127,21 +207,67 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
                   "$at$",
                   moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
                 )
+                .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
+                .replace(
+                  "$amount$",
+                  Number(ethers.utils.formatEther(absChange)).toFixed(5)
+                )
+                .replace("$from$", ev.from)
+                .replace(
+                  "$resolvedFrom$",
+                  `${ev.from} - ${AddressResolver(ev.from)}`
+                )
+                .replace("$to$", ev.args.delegate)
+                .replace(
+                  "$resolvedTo$",
+                  `${ev.args.delegate} - ${AddressResolver(ev.args.delegate)}`
+                )
+                .replace(
+                  "$prevBalance$",
+                  `${
+                    (await getPrevBalance(ev.args.delegate, ev.blockNumber))
+                      .amount
+                  } - ${cleanFixed(
+                    (
+                      await getPrevBalance(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}%`
+                )
+                .replace(
+                  "$finalBalance$",
+                  `${
+                    (await getBalance(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getBalance(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace(
+                  "$prevVp$",
+                  `${
+                    (await getPrevVp(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getPrevVp(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace(
+                  "$finalVp$",
+                  `${
+                    (await getVp(ev.args.delegate, ev.blockNumber)).amount
+                  } - ${cleanFixed(
+                    (
+                      await getVp(ev.args.delegate, ev.blockNumber)
+                    ).percent.toFixed(6)
+                  )}`
+                )
+                .replace("$tx$", ev.transactionHash)
             );
           }
         }
 
-        const delegateUser = (await methods.queries.doesUserExists(
-          ev.args.delegate
-        ))
-          ? await methods.queries.getUserByAddress(ev.args.delegate)
-          : await methods.commands.createUser(ev.args.delegate);
-
-        await methods.commands.setDelegate(
-          delegateUser.address,
-          ev.args.newBalance,
-          ev.happenedAt
-        );
         return;
       }
       case "Transfer": {
@@ -155,78 +281,6 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
             ? await methods.queries.getUserByAddress(ev.args.dst)
             : await methods.commands.createUser(ev.args.dst);
 
-          if (alertSettings.transferRelative.active) {
-            const relativeChange = await isUserBalanceChangedRelative(
-              {
-                blockNumber: ev.blockNumber,
-                happenedAt: new Date(ev.happenedAt),
-              },
-              ev.args.dst.toLowerCase(),
-              {
-                percent: alertSettings.transferRelative.percent,
-                timeframe: alertSettings.transferRelative.timeframe,
-              }
-            );
-
-            if (relativeChange) {
-              sendM(
-                settings.alertSettings.transferRelative.message
-                  .replace(
-                    "$time$",
-                    `${settings.alertSettings.transferRelative.timeframe}`
-                  )
-                  .replace("$to$", ev.args.dst)
-                  .replace(
-                    "$time$",
-                    `${settings.alertSettings.transferRelative.timeframe}`
-                  )
-                  .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
-                  .replace(
-                    "$at$",
-                    moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
-                  )
-              );
-            }
-          }
-
-          if (alertSettings.transferAmount.active) {
-            const absChange = await isUserBalanceChangedAbsolute(
-              {
-                blockNumber: ev.blockNumber,
-                happenedAt: new Date(ev.happenedAt),
-              },
-              ev.args.dst.toLowerCase(),
-              {
-                amount: alertSettings.transferAmount.amount,
-                timeframe: alertSettings.transferAmount.timeframe,
-              }
-            );
-
-            if (absChange) {
-              sendM(
-                `${settings.alertSettings.transferAmount.message} https://etherscan.org/tx/0xasdf`
-                  .replace(
-                    "$time$",
-                    `${settings.alertSettings.transferAmount.timeframe}`
-                  )
-                  .replace("$from$", ev.args.src)
-                  .replace("$to$", ev.args.dst)
-                  .replace(
-                    "$time$",
-                    `${settings.alertSettings.transferAmount.timeframe}`
-                  )
-                  .replace(
-                    "$amount$",
-                    Number(ethers.utils.formatEther(absChange)).toFixed(5)
-                  )
-                  .replace(
-                    "$at$",
-                    moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
-                  )
-              );
-            }
-          }
-
           await methods.commands.transferUser(
             sourceUser.address,
             ev.args.wad,
@@ -239,6 +293,179 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
             true,
             ev.happenedAt
           );
+
+          const absChange = await isUserBalanceChangedAbsolute(
+            {
+              blockNumber: ev.blockNumber,
+              happenedAt: new Date(ev.happenedAt),
+            },
+            ev.args.dst.toLowerCase(),
+            {
+              amount: alertSettings.transferAmount.amount,
+              timeframe: alertSettings.transferAmount.timeframe,
+            }
+          );
+
+          const relativeChange = await isUserBalanceChangedRelative(
+            {
+              blockNumber: ev.blockNumber,
+              happenedAt: new Date(ev.happenedAt),
+            },
+            ev.args.dst.toLowerCase(),
+            {
+              percent: alertSettings.transferRelative.percent,
+              timeframe: alertSettings.transferRelative.timeframe,
+            }
+          );
+
+          console.log(ev.args.dst);
+
+          if (alertSettings.transferRelative.active) {
+            if (relativeChange) {
+              sendM(
+                settings.alertSettings.transferRelative.message
+                  .replace(
+                    "$time$",
+                    `${settings.alertSettings.transferRelative.timeframe}`
+                  )
+                  .replace("$to$", ev.args.dst)
+                  .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
+                  .replace(
+                    "$at$",
+                    moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
+                  )
+                  .replace(
+                    "$amount$",
+                    Number(ethers.utils.formatEther(absChange)).toFixed(5)
+                  )
+                  .replace("$from$", ev.from)
+                  .replace(
+                    "$resolvedFrom$",
+                    `${ev.from} - ${AddressResolver(ev.from)}`
+                  )
+                  .replace("$to$", ev.args.dst)
+                  .replace(
+                    "$resolvedTo$",
+                    `${ev.args.dst} - ${AddressResolver(ev.args.dst)}`
+                  )
+                  .replace(
+                    "$prevBalance$",
+                    `${
+                      (await getPrevBalance(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getPrevBalance(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}%`
+                  )
+                  .replace(
+                    "$finalBalance$",
+                    `${
+                      (await getBalance(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getBalance(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace(
+                    "$prevVp$",
+                    `${
+                      (await getPrevVp(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getPrevVp(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace(
+                    "$finalVp$",
+                    `${
+                      (await getVp(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getVp(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace("$tx$", ev.transactionHash)
+              );
+            }
+          }
+
+          if (alertSettings.transferAmount.active) {
+            if (absChange) {
+              sendM(
+                `${settings.alertSettings.transferAmount.message} https://etherscan.org/tx/0xasdf`
+                  .replace(
+                    "$time$",
+                    `${settings.alertSettings.transferRelative.timeframe}`
+                  )
+                  .replace("$to$", ev.args.dst)
+                  .replace("$percent$", cleanFixed(relativeChange.toFixed(6)))
+                  .replace(
+                    "$at$",
+                    moment(ev.happenedAt).format("DD.MM.YYYY HH:mm")
+                  )
+                  .replace(
+                    "$amount$",
+                    Number(ethers.utils.formatEther(absChange)).toFixed(5)
+                  )
+                  .replace("$from$", ev.from)
+                  .replace(
+                    "$resolvedFrom$",
+                    `${ev.from} - ${AddressResolver(ev.from)}`
+                  )
+                  .replace("$to$", ev.args.dst)
+                  .replace(
+                    "$resolvedTo$",
+                    `${ev.args.dst} - ${AddressResolver(ev.args.dst)}`
+                  )
+                  .replace(
+                    "$prevBalance$",
+                    `${
+                      (await getPrevBalance(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getPrevBalance(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}%`
+                  )
+                  .replace(
+                    "$finalBalance$",
+                    `${
+                      (await getBalance(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getBalance(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace(
+                    "$prevVp$",
+                    `${
+                      (await getPrevVp(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getPrevVp(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace(
+                    "$finalVp$",
+                    `${
+                      (await getVp(ev.args.dst, ev.blockNumber)).amount
+                    } - ${cleanFixed(
+                      (
+                        await getVp(ev.args.dst, ev.blockNumber)
+                      ).percent.toFixed(6)
+                    )}`
+                  )
+                  .replace("$tx$", ev.transactionHash)
+              );
+            }
+          }
+
           return;
         } catch (err) {
           console.log(err);

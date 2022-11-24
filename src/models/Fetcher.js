@@ -38,6 +38,8 @@ const Fetcher = () => {
     },
 
     start: ({ tokenAddress, tokenCreationBlock }) => {
+      console.log("have we started????");
+
       localStorage.setItem("fetchingStatus", 1);
       localStorage.setItem("tokenAddress", tokenAddress);
       localStorage.setItem("tokenCreationBlock", tokenCreationBlock);

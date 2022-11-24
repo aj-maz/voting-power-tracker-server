@@ -218,9 +218,163 @@ const isUserBalanceChangedAbsolute = async (
   }
 };
 
+const getPrevBalance = async (address, blockNumber) => {
+  const contract = new ethers.Contract(
+    localStorage.getItem("tokenAddress"),
+    ReflexerTokenABI,
+    provider
+  );
+
+  const refrenceBalance = await findUserBalanceAtBlocknumber(
+    address,
+    blockNumber - 1
+  );
+
+  const amount = refrenceBalance
+    ? refrenceBalance.amount
+    : (
+        await contract.functions.balanceOf(address, {
+          blockTag: blockNumber - 1,
+        })
+      )[0];
+
+  const percent = ethers.BigNumber.from(amount)
+    .mul(10 ** 12)
+    .div(
+      refrenceBalance
+        ? ethers.BigNumber.from(refrenceBalance.block.totalSupply)
+        : (
+            await contract.functions.totalSupply({
+              blockTag: blockNumber - 1,
+            })
+          )[0]
+    );
+
+  return {
+    amount,
+    percent: Number(percent) / 10 ** 10,
+  };
+};
+
+const getBalance = async (address, blockNumber) => {
+  const contract = new ethers.Contract(
+    localStorage.getItem("tokenAddress"),
+    ReflexerTokenABI,
+    provider
+  );
+
+  const refrenceBalance = await findUserBalanceAtBlocknumber(
+    address,
+    blockNumber
+  );
+
+  const amount = refrenceBalance
+    ? refrenceBalance.amount
+    : (
+        await contract.functions.balanceOf(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
+
+  const percent = ethers.BigNumber.from(amount)
+    .mul(10 ** 12)
+    .div(
+      refrenceBalance
+        ? ethers.BigNumber.from(refrenceBalance.block.totalSupply)
+        : (
+            await contract.functions.totalSupply({
+              blockTag: blockNumber,
+            })
+          )[0]
+    );
+
+  return {
+    amount,
+    percent: Number(percent) / 10 ** 10,
+  };
+};
+
+const getPrevVp = async (address, blockNumber) => {
+  const contract = new ethers.Contract(
+    localStorage.getItem("tokenAddress"),
+    ReflexerTokenABI,
+    provider
+  );
+
+  const refrenceVP = await findVotingPowerAtBlocknumber(
+    address,
+    blockNumber - 1
+  );
+
+  const amount = refrenceVP
+    ? refrenceVP.amount
+    : (
+        await contract.functions.getCurrentVotes(address, {
+          blockTag: blockNumber - 1,
+        })
+      )[0];
+
+  const percent = ethers.BigNumber.from(amount)
+    .mul(10 ** 12)
+    .div(
+      refrenceVP
+        ? ethers.BigNumber.from(refrenceVP.block.totalSupply)
+        : (
+            await contract.functions.totalSupply({
+              blockTag: blockNumber - 1,
+            })
+          )[0]
+    );
+
+  return {
+    amount,
+    percent: Number(percent) / 10 ** 10,
+  };
+};
+
+const getVp = async (address, blockNumber) => {
+  const contract = new ethers.Contract(
+    localStorage.getItem("tokenAddress"),
+    ReflexerTokenABI,
+    provider
+  );
+
+  const refrenceVP = await findVotingPowerAtBlocknumber(address, blockNumber);
+
+  console.log(address);
+  const amount = refrenceVP
+    ? refrenceVP.amount
+    : (
+        await contract.functions.getCurrentVotes(address, {
+          blockTag: blockNumber,
+        })
+      )[0];
+
+  const percent = ethers.BigNumber.from(amount)
+    .mul(10 ** 12)
+    .div(
+      refrenceVP
+        ? ethers.BigNumber.from(refrenceVP.block.totalSupply)
+        : (
+            await contract.functions.totalSupply(address, {
+              blockTag: blockNumber,
+            })
+          )[0]
+    );
+
+  return {
+    amount,
+    percent: Number(percent) / 10 ** 10,
+  };
+};
+
 module.exports = {
   isUserBalanceChangedAbsolute,
   isUserBalanceChangedRelative,
   isUserDelegateChangedRelative,
   isUserDelegateChangedAbsolute,
+  getBalance,
+  getPrevBalance,
+  getVp,
+  getPrevVp,
 };

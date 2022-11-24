@@ -59,9 +59,13 @@ const getBlock = async (id) => {
 };
 
 const findUserBalanceAtTimestamp = async (userId, timestamp) => {
-  const user = await getUser(userId);
+  const user = await getUser(userId.toLowerCase());
 
-  let pastTimestampBalances = user.balanceHistory
+  const balanceHistory = user.balanceHistory ? user.balanceHistory : [];
+
+  let userBlockNumberBalance = balanceHistory;
+
+  let pastTimestampBalances = userBlockNumberBalance
     .map((bH) => ({
       ...bH,
       block: {
@@ -79,9 +83,11 @@ const findUserBalanceAtTimestamp = async (userId, timestamp) => {
 };
 
 const findUserBalanceAtBlocknumber = async (userId, blockNumber) => {
-  const user = await getUser(userId);
+  const user = await getUser(userId.toLowerCase());
 
-  let userBlockNumberBalance = user.balanceHistory
+  const balanceHistory = user.balanceHistory ? user.balanceHistory : [];
+
+  let userBlockNumberBalance = balanceHistory
     .map((bH) => ({
       ...bH,
       block: {
@@ -98,9 +104,13 @@ const findUserBalanceAtBlocknumber = async (userId, blockNumber) => {
 };
 
 const findVotingPowerAtTimestamp = async (userId, timestamp) => {
-  const user = await getUser(userId);
+  const user = await getUser(userId.toLowerCase());
 
-  let pastTimestampVotingPower = user.votingPowerHistory
+  const votingPowerHistory = user.votingPowerHistory
+    ? user.votingPowerHistory
+    : [];
+
+  let pastTimestampVotingPower = votingPowerHistory
     .map((bH) => ({
       ...bH,
       block: {
@@ -118,9 +128,13 @@ const findVotingPowerAtTimestamp = async (userId, timestamp) => {
 };
 
 const findVotingPowerAtBlocknumber = async (userId, blockNumber) => {
-  const user = await getUser(userId);
+  const user = await getUser(userId.toLowerCase());
 
-  let userBlockNumberBalance = user.votingPowerHistory
+  const votingPowerHistory = user.votingPowerHistory
+    ? user.votingPowerHistory
+    : [];
+
+  let userBlockNumberBalance = votingPowerHistory
     .map((bH) => ({
       ...bH,
       block: {
