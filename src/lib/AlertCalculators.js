@@ -251,7 +251,7 @@ const getPrevBalance = async (address, blockNumber) => {
     );
 
   return {
-    amount,
+    amount: Number(ethers.utils.formatEther(amount)).toFixed(5),
     percent: Number(percent) / 10 ** 10,
   };
 };
@@ -289,7 +289,7 @@ const getBalance = async (address, blockNumber) => {
     );
 
   return {
-    amount,
+    amount: Number(ethers.utils.formatEther(amount)).toFixed(5),
     percent: Number(percent) / 10 ** 10,
   };
 };
@@ -327,7 +327,7 @@ const getPrevVp = async (address, blockNumber) => {
     );
 
   return {
-    amount,
+    amount: Number(ethers.utils.formatEther(amount)).toFixed(5),
     percent: Number(percent) / 10 ** 10,
   };
 };
@@ -341,7 +341,6 @@ const getVp = async (address, blockNumber) => {
 
   const refrenceVP = await findVotingPowerAtBlocknumber(address, blockNumber);
 
-  console.log(address);
   const amount = refrenceVP
     ? refrenceVP.amount
     : (
@@ -356,14 +355,40 @@ const getVp = async (address, blockNumber) => {
       refrenceVP
         ? ethers.BigNumber.from(refrenceVP.block.totalSupply)
         : (
-            await contract.functions.totalSupply(address, {
+            await contract.functions.totalSupply({
               blockTag: blockNumber,
             })
           )[0]
     );
 
   return {
-    amount,
+    amount: Number(ethers.utils.formatEther(amount)).toFixed(5),
+    percent: Number(percent) / 10 ** 10,
+  };
+};
+
+const getAmountPercent = async (amount, address, blockNumber) => {
+  console.log("======", amount, address, blockNumber);
+  const contract = new ethers.Contract(
+    localStorage.getItem("tokenAddress"),
+    ReflexerTokenABI,
+    provider
+  );
+
+  const refrenceVP = await findVotingPowerAtBlocknumber(address, blockNumber);
+
+  const percent = amount.mul(10 ** 12).div(
+    refrenceVP
+      ? ethers.BigNumber.from(refrenceVP.block.totalSupply)
+      : (
+          await contract.functions.totalSupply({
+            blockTag: blockNumber,
+          })
+        )[0]
+  );
+
+  return {
+    amount: Number(ethers.utils.formatEther(String(amount))).toFixed(5),
     percent: Number(percent) / 10 ** 10,
   };
 };
@@ -377,4 +402,5 @@ module.exports = {
   getPrevBalance,
   getVp,
   getPrevVp,
+  getAmountPercent,
 };
