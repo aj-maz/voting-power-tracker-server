@@ -60,7 +60,7 @@ setInterval(() => {
   alreadyStartedProcessing = new Set();
 }, 1000 * 3600 * 2);
 
-const hereThreshold = 0.1;
+const hereThreshold = 2;
 
 const EventProcessor = (variant, discordManager, settings) => async (ev) => {
   //console.log("Processing Event ....", ev)
