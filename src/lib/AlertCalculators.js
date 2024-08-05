@@ -75,9 +75,9 @@ const isUserDelegateChangedRelative = async (
   if (
     relativeDifferencePercent.gte(ethers.BigNumber.from(percent * 10 ** 12))
   ) {
-    return Number(relativeDifferencePercent) / 10 ** 10;
+    return [true, Number(relativeDifferencePercent) / 10 ** 10];
   } else {
-    return false;
+    return [false, Number(relativeDifferencePercent) / 10 ** 10];
   }
 };
 
@@ -113,10 +113,12 @@ const isUserDelegateChangedAbsolute = async (
   const absoulteDiff = ethers.BigNumber.from(currentVotingPower).sub(
     ethers.BigNumber.from(refrenceVotingPower ? refrenceVotingPower : 0)
   );
-  if (absoulteDiff >= amount) {
-    return String(absoulteDiff);
+
+  console.log("user absolute diff ====", String(absoulteDiff), amount);
+  if (absoulteDiff.gte(amount)) {
+    return [true, String(absoulteDiff)];
   } else {
-    return false;
+    return [false, String(absoulteDiff)];
   }
 };
 
@@ -171,9 +173,9 @@ const isUserBalanceChangedRelative = async (
   if (
     relativeDifferencePercent.gte(ethers.BigNumber.from(percent * 10 ** 12))
   ) {
-    return Number(relativeDifferencePercent) / 10 ** 10;
+    return [true, Number(relativeDifferencePercent) / 10 ** 10];
   } else {
-    return false;
+    return [false, Number(relativeDifferencePercent) / 10 ** 10];
   }
 };
 
@@ -212,9 +214,9 @@ const isUserBalanceChangedAbsolute = async (
     ethers.BigNumber.from(refrenceBalance)
   );
   if (absoulteDiff >= amount) {
-    return String(absoulteDiff);
+    return [true, String(absoulteDiff)];
   } else {
-    return false;
+    return [false, String(absoulteDiff)];
   }
 };
 

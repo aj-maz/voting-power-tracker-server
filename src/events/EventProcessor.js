@@ -83,29 +83,31 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
         return;
       }
       case "DelegateVotesChanged": {
-        const absChange = await isUserDelegateChangedAbsolute(
-          {
-            blockNumber: ev.blockNumber,
-            happenedAt: new Date(ev.happenedAt),
-          },
-          ev.args.delegate.toLowerCase(),
-          {
-            amount: alertSettings.delegateAmount.amount,
-            timeframe: alertSettings.delegateAmount.timeframe,
-          }
-        );
+        const [isAbsoluteChange, absChange] =
+          await isUserDelegateChangedAbsolute(
+            {
+              blockNumber: ev.blockNumber,
+              happenedAt: new Date(ev.happenedAt),
+            },
+            ev.args.delegate.toLowerCase(),
+            {
+              amount: alertSettings.delegateAmount.amount,
+              timeframe: alertSettings.delegateAmount.timeframe,
+            }
+          );
 
-        const relativeChange = await isUserDelegateChangedRelative(
-          {
-            blockNumber: ev.blockNumber,
-            happenedAt: new Date(ev.happenedAt),
-          },
-          ev.args.delegate.toLowerCase(),
-          {
-            percent: alertSettings.delegateRelative.percent,
-            timeframe: alertSettings.delegateRelative.timeframe,
-          }
-        );
+        const [isRelativeChange, relativeChange] =
+          await isUserDelegateChangedRelative(
+            {
+              blockNumber: ev.blockNumber,
+              happenedAt: new Date(ev.happenedAt),
+            },
+            ev.args.delegate.toLowerCase(),
+            {
+              percent: alertSettings.delegateRelative.percent,
+              timeframe: alertSettings.delegateRelative.timeframe,
+            }
+          );
 
         const delegateUser = (await methods.queries.doesUserExists(
           ev.args.delegate
@@ -123,7 +125,7 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
         const resolvedTo = await AddressResolver(ev.args.delegate);
 
         if (alertSettings.delegateRelative.active) {
-          if (relativeChange) {
+          if (isRelativeChange) {
             sendM(
               Number(relativeChange) > hereThreshold
                 ? "@here "
@@ -236,7 +238,7 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
         }
 
         if (alertSettings.delegateAmount.active) {
-          if (absChange) {
+          if (isAbsoluteChange) {
             sendM(
               Number(relativeChange) > hereThreshold
                 ? "@here "
@@ -374,35 +376,37 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
             ev.happenedAt
           );
 
-          const absChange = await isUserBalanceChangedAbsolute(
-            {
-              blockNumber: ev.blockNumber,
-              happenedAt: new Date(ev.happenedAt),
-            },
-            ev.args.dst.toLowerCase(),
-            {
-              amount: alertSettings.transferAmount.amount,
-              timeframe: alertSettings.transferAmount.timeframe,
-            }
-          );
+          const [isAbsoluteChange, absChange] =
+            await isUserBalanceChangedAbsolute(
+              {
+                blockNumber: ev.blockNumber,
+                happenedAt: new Date(ev.happenedAt),
+              },
+              ev.args.dst.toLowerCase(),
+              {
+                amount: alertSettings.transferAmount.amount,
+                timeframe: alertSettings.transferAmount.timeframe,
+              }
+            );
 
-          const relativeChange = await isUserBalanceChangedRelative(
-            {
-              blockNumber: ev.blockNumber,
-              happenedAt: new Date(ev.happenedAt),
-            },
-            ev.args.dst.toLowerCase(),
-            {
-              percent: alertSettings.transferRelative.percent,
-              timeframe: alertSettings.transferRelative.timeframe,
-            }
-          );
+          const [isRelativeChange, relativeChange] =
+            await isUserBalanceChangedRelative(
+              {
+                blockNumber: ev.blockNumber,
+                happenedAt: new Date(ev.happenedAt),
+              },
+              ev.args.dst.toLowerCase(),
+              {
+                percent: alertSettings.transferRelative.percent,
+                timeframe: alertSettings.transferRelative.timeframe,
+              }
+            );
 
           const resolvedFrom = await AddressResolver(ev.from);
           const resolvedTo = await AddressResolver(ev.args.dst);
 
           if (alertSettings.transferRelative.active) {
-            if (relativeChange) {
+            if (isRelativeChange) {
               sendM(
                 (Number(relativeChange) > hereThreshold ? "@here " : "").concat(
                   settings.alertSettings.transferRelative.message
@@ -503,7 +507,9 @@ const EventProcessor = (variant, discordManager, settings) => async (ev) => {
           }
 
           if (alertSettings.transferAmount.active) {
-            if (absChange) {
+            console.log(relativeChange);
+
+            if (isAbsoluteChange) {
               sendM(
                 (Number(relativeChange) > hereThreshold ? "@here " : "").concat(
                   settings.alertSettings.transferAmount.message
